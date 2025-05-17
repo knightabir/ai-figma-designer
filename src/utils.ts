@@ -5,7 +5,7 @@ import { EffectSpec } from './types';
  * @param hex Hex color string (e.g. "#4285F4" or "4285F4")
  * @returns RGB color object with r, g, b values between 0 and 1
  */
-export function hexToRgb(hex: string) {
+export function hexToRgb(hex: string): RGB {
   // Remove # if present
   hex = hex.replace(/^#/, '');
   
@@ -17,28 +17,26 @@ export function hexToRgb(hex: string) {
   return { r, g, b };
 }
 
-export function hexToRgba(hex: string): RGBA {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
-  const a = hex.length === 9 ? parseInt(hex.slice(7, 9), 16) / 255 : 1;
-  return { r, g, b, a };
+/**
+ * Create a paint object with the given color
+ */
+export function createPaint(color: string | RGB): SolidPaint {
+  const rgb = typeof color === 'string' ? hexToRgb(color) : color;
+  return {
+    type: 'SOLID',
+    color: rgb,
+    visible: true,
+    opacity: 1
+  };
 }
 
 /**
- * Clone an object using JSON serialization
- * @param val Object to clone
- * @returns Cloned object
+ * Create an effect with the given spec
  */
-export function clone<T>(val: T): T {
-  return JSON.parse(JSON.stringify(val));
-}
-
 export function createEffect(effectSpec: EffectSpec): Effect {
-  const color = hexToRgba(effectSpec.color);
   return {
     type: effectSpec.type,
-    color,
+    color: hexToRgb(effectSpec.color),
     offset: effectSpec.offset,
     radius: effectSpec.blur,
     spread: effectSpec.spread || 0,
@@ -47,34 +45,27 @@ export function createEffect(effectSpec: EffectSpec): Effect {
   } as Effect;
 }
 
-export function ensureValidColor(color: string): RGBA {
-  if (!color.startsWith('#')) {
-    // Default to black if invalid color
-    return { r: 0, g: 0, b: 0, a: 1 };
-  }
-  return hexToRgba(color);
+/**
+ * Clone an object using JSON serialization
+ */
+export function clone<T>(val: T): T {
+  return JSON.parse(JSON.stringify(val));
 }
 
+/**
+ * Ensure color string starts with # and has valid RGB values
+ */
+export function ensureValidColor(color: string): string {
+  if (!color.startsWith('#')) {
+    return '#000000';
+  }
+  // Remove alpha channel if present
+  return color.length > 7 ? color.substring(0, 7) : color;
+}
+
+/**
+ * Clamp a number between min and max values
+ */
 export function clampNumber(num: number, min: number, max: number): number {
   return Math.min(Math.max(num, min), max);
-}
-
-export function createDefaultFill(color: string = '#000000'): Paint {
-  return {
-    type: 'SOLID',
-    color: hexToRgba(color),
-    visible: true,
-    opacity: 1,
-    blendMode: "NORMAL"
-  } as Paint;
-}
-
-export function createDefaultStroke(color: string = '#000000', weight: number = 1): Paint {
-  return {
-    type: 'SOLID',
-    color: hexToRgba(color),
-    visible: true,
-    opacity: 1,
-    blendMode: "NORMAL"
-  } as Paint;
 }

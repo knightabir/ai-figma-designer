@@ -32,9 +32,8 @@ figma.ui.onmessage = async (msg) => {  if (msg.type === 'update-component') {
     try {
       // Initialize AI configuration
       const aiConfig = createAIConfig();
-      
-      // Get the component to update
-      const component = figma.getNodeById(msg.componentId);
+        // Get the component to update
+      const component = await figma.getNodeByIdAsync(msg.componentId);
       if (!component) {
         throw new Error("Selected component not found");
       }

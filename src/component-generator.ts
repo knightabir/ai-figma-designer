@@ -12,71 +12,110 @@ export async function generateUIComponent(
   prompt: string,
   generationConfig?: any
 ): Promise<ComponentSpec | null> {
-  const fullPrompt = `You are a Figma component generator. 
+  const fullPrompt = `You are a professional Figma UI/UX designer specialized in creating modern, production-ready components.
+
+    Design Context:
+    - Default to desktop design (min-width: 1024px)
+    - If mobile is requested, create responsive variants for:
+      * Mobile (320px - 767px)
+      * Tablet (768px - 1023px)
+      * Desktop (1024px+)
+
     Create a detailed component specification for: ${prompt}
-    
-    Rules:
-    1. Response must be valid JSON
-    2. Use Material Design color tokens
-    3. Follow modern UI/UX best practices
-    4. Include proper spacing and layout
-    5. Ensure accessibility compliance
-    6. Use a consistent color scheme
-    7. Use a clear naming scheme
-    8. Use a consistent design language
-    9. Use a consistent font and typography
-    10. Use a consistent iconography style
-    11. Use a consistent button style
-    12. Use a consistent input field style
-    13. Use a consistent card style
-    14. Use a consistent modal style
-    15. Use a consistent tooltip style
-    16. Use a consistent dropdown style
-    17. Use a consistent checkbox style
-    18. Use a consistent radio button style
-    19. Use a consistent switch style
-    20. Use a consistent slider style
-    21. Use a consistent progress bar style
-    22. Use a consistent spinner style
-    23. Use a consistent toast style
-    24. User icons where appropriate
-    25. Use a consistent color scheme
-    26. Use a consistent font and typography
-    27. Use realistic values for properties
-    
-    Required JSON format:
-    {
-      "name": "Component Name",
-      "layout": "VERTICAL", // or HORIZONTAL, NONE
-      "elements": [
-        {
-          "type": "button",
-          "name": "Button Name",
-          "properties": {
-            "text": "Button Text",
-            "width": 200,
-            "height": 48,
-            "cornerRadius": 8,
-            "fill": "#4285F4",
-            "textColor": "#FFFFFF",
-            "fontSize": 16
-          }
-        }
-      ]
-    }
 
-    Supported element types:
-    - button: For interactive buttons with text
-    - text: For labels, titles, paragraphs
-    - rectangle: For simple shapes, backgrounds, dividers
-    - input: For text input fields
-    - icon: For simple vector icons
-    - image: For image placeholders
+    Design Process:
+    1. First, design the background/container:
+       - Consider the component's context and hierarchy
+       - Use appropriate padding and margins
+       - Apply proper elevation/shadow if needed
+       - Use subtle gradients or textures if appropriate
 
-    Make sure all properties are appropriate for the element type and follow Figma's API.
-    
-    The response should only contain the JSON, no additional text or explanations.
-  `;
+Then, design the main component:
+Follow visual hierarchy principles
+Ensure proper contrast ratios (WCAG 2.1)
+Use industry-standard spacing (8px grid)
+Include hover/active states for interactive elements
+
+Finally, add responsive behavior:
+Define breakpoint-specific properties
+Adjust spacing and typography for different screens
+Maintain touch targets (min 44px) for mobile
+
+Design Guidelines:
+
+Typography:
+Use system fonts or Google Fonts
+Desktop: 16px base font size
+Mobile: 14px base font size
+Follow type scale ratios (1.2 - 1.25)
+
+Colors:
+Use Material Design tokens
+Include dark mode variants
+Maintain consistent contrast
+Use accent colors sparingly
+
+Spacing:
+Base unit: 8px
+Containers: 16px/24px padding
+Elements: 8px/16px margins
+Touch targets: 44px minimum
+
+Interactions:
+Hover states: 0.1 opacity change
+Active states: 0.2 opacity change
+Transitions: 200-300ms duration
+Easing: cubic-bezier(0.4, 0, 0.2, 1)
+
+Required JSON format:
+{
+"name": "Component Name",
+"layout": "VERTICAL", // or HORIZONTAL, NONE
+"background": {
+ "type": "rectangle",
+ "properties": {
+   "fill": "
+#FFFFFF",
+   "opacity": 1,
+   "cornerRadius": 8,
+   "effect": {
+     "type": "DROP_SHADOW",
+     "color": "#00000020",
+     "offset": { "x": 0, "y": 2 },
+     "blur": 8
+   }
+ }
+},
+"elements": [
+ {
+   "type": "elementType",
+   "name": "elementName",
+   "properties": {
+     // Element properties
+   },
+   "responsive": {
+     "mobile": {
+       // Mobile-specific overrides
+     },
+     "tablet": {
+       // Tablet-specific overrides
+     }
+   }
+ }
+]
+}
+
+Supported element types:
+
+button: Interactive buttons with states
+text: Typography elements
+rectangle: Shapes, backgrounds, dividers
+input: Form input fields
+icon: Vector icons (use Material Icons)
+image: Image placeholders or frames
+
+The response should only contain the JSON, no additional text or explanations.
+`;
 
   try {
     const generateResult = await withRetry(async () => {
@@ -88,7 +127,7 @@ export async function generateUIComponent(
     // Extract and validate JSON
     let componentSpec: ComponentSpec;
     try {
-      if (typeof generateResult !== 'string') {
+      if (typeof generateResult !== "string") {
         throw new Error("Invalid response type from AI model");
       }
 
@@ -96,10 +135,11 @@ export async function generateUIComponent(
       if (!jsonMatch) {
         throw new Error("No valid JSON found in response");
       }
-      
+
       componentSpec = JSON.parse(jsonMatch[0]);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown parsing error';
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown parsing error";
       throw new Error(`Invalid JSON response: ${errorMessage}`);
     }
 
@@ -124,9 +164,7 @@ function validateComponentSpec(spec: any): spec is ComponentSpec {
     typeof spec.name === "string" &&
     typeof spec.layout === "string" &&
     Array.isArray(spec.elements) &&
-    spec.elements.every((element: any) =>
-      validateElement(element)
-    )
+    spec.elements.every((element: any) => validateElement(element))
   );
 }
 

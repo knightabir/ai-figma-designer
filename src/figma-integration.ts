@@ -1,5 +1,40 @@
 import { ComponentSpec, ElementSpec, ElementProperties } from "./types";
-import { hexToRgba, createEffect, clone, createDefaultFill, createDefaultStroke } from "./utils";
+import { createPaint, createEffect, clone, hexToRgb } from "./utils";
+
+/**
+ * Create a valid RGB color without alpha channel
+ */
+function createValidRGB(color: RGB | string): RGB {
+  if (typeof color === 'string') {
+    // Convert hex to RGB
+    const hex = color.replace(/^#/, '');
+    return {
+      r: parseInt(hex.substring(0, 2), 16) / 255,
+      g: parseInt(hex.substring(2, 4), 16) / 255,
+      b: parseInt(hex.substring(4, 6), 16) / 255
+    };
+  }
+  
+  // Ensure RGB values are between 0 and 1
+  return {
+    r: Math.max(0, Math.min(1, color.r)),
+    g: Math.max(0, Math.min(1, color.g)),
+    b: Math.max(0, Math.min(1, color.b))
+  };
+}
+
+/**
+ * Create a valid paint object for fills
+ */
+function createValidPaint(color: RGB | string): SolidPaint {
+  const rgbColor = createValidRGB(color);
+  return {
+    type: "SOLID",
+    color: rgbColor,
+    opacity: 1,
+    visible: true
+  };
+}
 
 /**
  * Create Figma nodes from component specification
@@ -40,30 +75,12 @@ export async function createFigmaNodes(componentSpec: ComponentSpec) {
  */
 async function createElement(element: ElementSpec): Promise<SceneNode | null> {
   switch(element.type.toLowerCase()) {
-    case 'button': {
-      return createButton(element);
-    }
-    
-    case 'text': {
-      return createText(element);
-    }
-    
-    case 'rectangle': {
-      return createRectangle(element);
-    }
-    
-    case 'input': {
-      return createInputField(element);
-    }
-    
-    case 'icon': {
-      return createIcon(element);
-    }
-    
-    case 'image': {
-      return createImagePlaceholder(element);
-    }
-    
+    case 'button': return createButton(element);
+    case 'text': return createText(element);
+    case 'rectangle': return createRectangle(element);
+    case 'input': return createInputField(element);
+    case 'icon': return createIcon(element);
+    case 'image': return createImagePlaceholder(element);
     default:
       figma.notify(`⚠️ Unknown element type: ${element.type}`);
       return null;
@@ -94,20 +111,20 @@ async function createButton(element: ElementSpec): Promise<SceneNode> {
     if (element.properties.fills && Array.isArray(element.properties.fills)) {
       const fill = element.properties.fills[0] as SolidPaint;
       if (fill?.type === "SOLID") {
-        button.fills = [createDefaultFill(`#${Math.round(fill.color.r * 255).toString(16).padStart(2, '0')}${Math.round(fill.color.g * 255).toString(16).padStart(2, '0')}${Math.round(fill.color.b * 255).toString(16).padStart(2, '0')}`)];
+        button.fills = [createPaint(fill.color)];
       }
     }
   }
   
   // Create button text
-  if (element.properties && element.properties.text) {
+  if (element.properties?.text) {
     const text = figma.createText();
     await loadFonts();
     text.characters = element.properties.text;
     
     if (element.properties.fontSize) text.fontSize = element.properties.fontSize;
     if (element.properties.textColor) {
-      text.fills = [createDefaultFill(element.properties.textColor)];
+      text.fills = [createPaint(element.properties.textColor)];
     }
     
     button.appendChild(text);
@@ -129,7 +146,7 @@ async function createText(element: ElementSpec): Promise<SceneNode> {
     if (element.properties.text) text.characters = element.properties.text;
     if (element.properties.fontSize) text.fontSize = element.properties.fontSize;
     if (element.properties.textColor) {
-      text.fills = [createDefaultFill(element.properties.textColor)];
+      text.fills = [createPaint(element.properties.textColor)];
     }
     if (element.properties.width) text.resize(element.properties.width, text.height);
     if (element.properties.fontWeight === "bold") {
@@ -155,7 +172,7 @@ function createRectangle(element: ElementSpec): SceneNode {
     if (element.properties.fills && Array.isArray(element.properties.fills)) {
       const fill = element.properties.fills[0] as SolidPaint;
       if (fill?.type === "SOLID") {
-        rect.fills = [createDefaultFill(`#${Math.round(fill.color.r * 255).toString(16).padStart(2, '0')}${Math.round(fill.color.g * 255).toString(16).padStart(2, '0')}${Math.round(fill.color.b * 255).toString(16).padStart(2, '0')}`)];
+        rect.fills = [createPaint(fill.color)];
       }
     }
   }
@@ -179,9 +196,9 @@ async function createInputField(element: ElementSpec): Promise<SceneNode> {
   frame.cornerRadius = element.properties?.cornerRadius || 4;
   frame.resize(element.properties?.width || 240, element.properties?.height || 40);
   
-  // Create border
-  frame.strokes = [{ type: 'SOLID', color: { r: 0.7, g: 0.7, b: 0.7 } }];
-  frame.fills = [createDefaultFill("#FFFFFF")];
+  // Create border and fill
+  frame.strokes = [createPaint({ r: 0.7, g: 0.7, b: 0.7 })];
+  frame.fills = [createPaint("#FFFFFF")];
   
   // Create placeholder text
   if (element.properties?.placeholder) {
@@ -189,7 +206,7 @@ async function createInputField(element: ElementSpec): Promise<SceneNode> {
     await loadFonts();
     text.characters = element.properties.placeholder;
     text.opacity = 0.5;
-    text.fills = [createDefaultFill("#000000")];
+    text.fills = [createPaint("#000000")];
     frame.appendChild(text);
   }
   
@@ -211,10 +228,10 @@ function createIcon(element: ElementSpec): SceneNode {
   if (element.properties?.fills && Array.isArray(element.properties.fills)) {
     const fill = element.properties.fills[0] as SolidPaint;
     if (fill?.type === "SOLID") {
-      shape.fills = [createDefaultFill(`#${Math.round(fill.color.r * 255).toString(16).padStart(2, '0')}${Math.round(fill.color.g * 255).toString(16).padStart(2, '0')}${Math.round(fill.color.b * 255).toString(16).padStart(2, '0')}`)];
+      shape.fills = [createPaint(fill.color)];
     }
   } else {
-    shape.fills = [createDefaultFill("#000000")];
+    shape.fills = [createPaint("#000000")];
   }
   
   icon.appendChild(shape);
@@ -232,12 +249,12 @@ function createImagePlaceholder(element: ElementSpec): SceneNode {
   frame.resize(element.properties?.width || 200, element.properties?.height || 150);
   
   // Create background
-  frame.fills = [{ type: 'SOLID', color: { r: 0.9, g: 0.9, b: 0.9 } }];
+  frame.fills = [createPaint({ r: 0.9, g: 0.9, b: 0.9 })];
   
   // Create placeholder rectangle
   const rect = figma.createRectangle();
   rect.resize(frame.width, frame.height);
-  rect.fills = [{ type: 'SOLID', color: { r: 0.9, g: 0.9, b: 0.9 } }];
+  rect.fills = [createPaint({ r: 0.9, g: 0.9, b: 0.9 })];
   
   frame.appendChild(rect);
   return frame;
@@ -447,7 +464,7 @@ export async function createFigmaComponent(spec: ComponentSpec): Promise<FrameNo
   if (spec.background) {
     const bg = figma.createRectangle();
     bg.name = "Background";
-    bg.fills = [createDefaultFill(spec.background.properties.fill)];
+    bg.fills = [createPaint(spec.background.properties.fill)];
     
     if (spec.background.properties.cornerRadius) {
       bg.cornerRadius = spec.background.properties.cornerRadius;
@@ -493,7 +510,7 @@ async function createElementNode(element: ElementSpec): Promise<SceneNode | null
       button.primaryAxisSizingMode = "AUTO";
       button.counterAxisSizingMode = "AUTO";
       const fill = element.properties.fills?.[0] as SolidPaint;
-      button.fills = [createDefaultFill(fill?.color ? `#${fill.color.r.toString(16)}${fill.color.g.toString(16)}${fill.color.b.toString(16)}` : "#FFFFFF")];
+      button.fills = [createPaint(fill?.color || "#FFFFFF")];
       button.cornerRadius = element.properties.cornerRadius ?? 4;
       return button;
     }
@@ -519,9 +536,8 @@ async function createElementNode(element: ElementSpec): Promise<SceneNode | null
       const rect = figma.createRectangle();
       rect.name = element.name;
       if (element.properties.fills?.length) {
-        rect.fills = element.properties.fills.map(fill => 
-          createDefaultFill((fill as SolidPaint).color.toString())
-        );
+        const fill = element.properties.fills[0] as SolidPaint;
+        rect.fills = [createPaint(fill.color)];
       }
       if (element.properties.cornerRadius) {
         rect.cornerRadius = element.properties.cornerRadius;
@@ -531,9 +547,9 @@ async function createElementNode(element: ElementSpec): Promise<SceneNode | null
     case "input": {
       const input = figma.createFrame();
       input.name = element.name;
-      input.layoutMode = "HORIZONTAL";
-      input.fills = [createDefaultFill("#FFFFFF")];
-      input.strokes = [createDefaultStroke("#00000020", 1)];
+      input.layoutMode = "HORIZONTAL";      input.fills = [createPaint("#FFFFFF")];
+      // Create a stroke with a hex color that includes transparency
+      input.strokes = [createPaint("#00000020")];
       input.cornerRadius = 4;
       input.paddingLeft = input.paddingRight = 8;
       input.paddingTop = input.paddingBottom = 8;
@@ -543,7 +559,7 @@ async function createElementNode(element: ElementSpec): Promise<SceneNode | null
       const icon = figma.createFrame();
       icon.name = element.name;
       icon.layoutMode = "NONE";
-      icon.fills = [createDefaultFill("#000000")];
+      icon.fills = [createPaint("#000000")];
       icon.resize(24, 24);
       return icon;
     }
@@ -551,7 +567,7 @@ async function createElementNode(element: ElementSpec): Promise<SceneNode | null
       const image = figma.createFrame();
       image.name = element.name;
       image.layoutMode = "NONE";
-      image.fills = [createDefaultFill("#F0F0F0")];
+      image.fills = [createPaint("#F0F0F0")];
       image.resize(100, 100);
       return image;
     }
@@ -575,7 +591,7 @@ export async function updateFigmaComponent(frame: FrameNode, componentSpec: Comp
       bg.layoutPositioning = "ABSOLUTE";
     }
     
-    bg.fills = [createDefaultFill(componentSpec.background.properties.fill)];
+    bg.fills = [createPaint(componentSpec.background.properties.fill)];
     if (componentSpec.background.properties.cornerRadius) {
       bg.cornerRadius = componentSpec.background.properties.cornerRadius;
     }
