@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      font-family: Inter, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #fff;
+    }
+    
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-width: 320px;
+      margin: 0 auto;
+    }
+    
+    textarea {
+      width: 100%;
+      height: 120px;
+      resize: none;
+      border: 1px solid #E5E5E5;
+      border-radius: 6px;
+      padding: 12px;
+      font-family: inherit;
+      font-size: 14px;
+      line-height: 1.5;
+      box-sizing: border-box;
+    }
+    
+    textarea:focus {
+      outline: none;
+      border-color: #18A0FB;
+      box-shadow: 0 0 0 2px rgba(24, 160, 251, 0.1);
+    }
+    
+    button {
+      background-color: #18A0FB;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 12px 24px;
+      font-weight: 500;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    
+    button:hover {
+      background-color: #0D8DE3;
+    }
+    
+    button:disabled {
+      background-color: #CCCCCC;
+      cursor: not-allowed;
+    }
+    
+    .footer {
+      text-align: center;
+      margin-top: 16px;
+      font-size: 12px;
+      color: #888;
+    }
+    
+    h2 {
+      margin: 0 0 16px 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    label {
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 4px;
+      display: block;
+    }
+    
+    .loading {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: #666;
+      font-size: 14px;
+    }
+      .loading.visible {
+      display: flex;
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .button-group button {
+      flex: 1;
+    }
+    
+    .selection-info {
+      padding: 8px;
+      background: #F5F5F5;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #666;
+    }
+    
+    .selection-info.has-selection {
+      background: #E3F2FD;
+      color: #1976D2;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>AI Component Generator</h2>
+      <div>
+      <label for="prompt">Component Description</label>
+      <textarea id="prompt" placeholder="Describe the component you want to generate..." required></textarea>
+    </div>
+    
+    <div class="button-group">
+      <button id="generateBtn">Generate New</button>
+      <button id="updateBtn" disabled>Update Selected</button>
+    </div>
+    
+    <div id="loading" class="loading">
+      <span>⚡ Generating component...</span>
+    </div>
+    
+    <div id="selectionInfo" class="selection-info">
+      <span>No component selected</span>
+    </div>
+    
+    <div class="footer">
+      Powered by Google Gemini AI
+    </div>
+  </div>
+  <script>
+    let selectedComponent = null;
+    
+    // Handle component generation
+    document.getElementById('generateBtn').onclick = async () => {
+      const prompt = document.getElementById('prompt').value;
+      
+      if (!prompt || prompt.trim().length < 5) {
+        alert('Please provide a detailed component description');
+        return;
+      }
+      
+      // Show loading state
+      const btn = document.getElementById('generateBtn');
+      const loading = document.getElementById('loading');
+      btn.disabled = true;
+      loading.classList.add('visible');
+      
+      try {
+        // Send message to plugin
+        parent.postMessage({
+          pluginMessage: {
+            type: 'generate-component',
+            prompt
+          }
+        }, '*');
+      } catch (error) {
+        alert('Error: ' + error.message);
+        btn.disabled = false;
+        loading.classList.remove('visible');
+      }
+    };    // Handle component update
+    document.getElementById('updateBtn').onclick = async () => {
+      const prompt = document.getElementById('prompt').value;
+      
+      if (!prompt || prompt.trim().length < 5) {
+        alert('Please provide a detailed update description');
+        return;
+      }
+      
+      // Show loading state
+      const btn = document.getElementById('updateBtn');
+      const loading = document.getElementById('loading');
+      btn.disabled = true;
+      document.getElementById('generateBtn').disabled = true;
+      loading.classList.add('visible');
+      
+      try {
+        // Send update message to plugin
+        parent.postMessage({
+          pluginMessage: {
+            type: 'update-component',
+            prompt,
+            componentId: selectedComponent.id
+          }
+        }, '*');
+      } catch (error) {
+        alert('Error: ' + error.message);
+        btn.disabled = false;
+        loading.classList.remove('visible');
+      }
+    };
+
+    // Listen for messages from the plugin
+    window.onmessage = async (event) => {
+      if (!event.data.pluginMessage) return;
+      
+      const message = event.data.pluginMessage;
+      const generateBtn = document.getElementById('generateBtn');
+      const updateBtn = document.getElementById('updateBtn');
+      const loading = document.getElementById('loading');
+      const selectionInfo = document.getElementById('selectionInfo');
+      
+      switch (message.type) {
+        case 'selection-change':
+          selectedComponent = message.component;
+          if (selectedComponent) {
+            updateBtn.disabled = false;
+            selectionInfo.textContent = `Selected: ${selectedComponent.name}`;
+            selectionInfo.classList.add('has-selection');
+          } else {
+            updateBtn.disabled = true;
+            selectionInfo.textContent = 'No component selected';
+            selectionInfo.classList.remove('has-selection');
+          }
+          break;
+
+        case 'generation-complete':
+          // Re-enable buttons and hide loading
+          generateBtn.disabled = false;
+          updateBtn.disabled = !selectedComponent;
+          loading.classList.remove('visible');
+          // Clear the input for next generation
+          document.getElementById('prompt').value = '';
+          break;
+          
+        case 'error':
+          // Re-enable buttons and hide loading
+          generateBtn.disabled = false;
+          updateBtn.disabled = !selectedComponent;
+          loading.classList.remove('visible');
+          // Show error message
+          alert('Error: ' + (message.message || 'Operation failed'));
+          break;
+      }
+    };
+  </script>
+</body>
+</html>

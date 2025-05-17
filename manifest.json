@@ -1,0 +1,12 @@
+{
+  "name": "AI Design Generator",
+  "id": "1234567890",
+  "api": "1.0.0",
+  "editorType": ["figma"],
+  "main": "dist/main.js",
+  "ui": "src/ui.html",
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["https://generativelanguage.googleapis.com"]
+  }
+}
