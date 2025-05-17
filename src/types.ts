@@ -14,7 +14,7 @@ export interface ComponentSpec {
 export interface BackgroundSpec {
   type: "rectangle";
   properties: {
-    fill: string;
+    fill: string | RGB; // Allow both hex and RGB
     opacity?: number;
     cornerRadius?: number;
     effect?: EffectSpec;
@@ -26,7 +26,7 @@ export interface BackgroundSpec {
  */
 export interface EffectSpec {
   type: "DROP_SHADOW";
-  color: string;
+  color: string; // Hex color
   offset: { x: number; y: number };
   spread?: number;
   blur: number;
@@ -45,10 +45,11 @@ export interface ResponsiveProps {
  * Element specification interface
  */
 export interface ElementSpec {
-  type: "button" | "text" | "rectangle" | "input" | "icon" | "image";
+  type: "button" | "text" | "rectangle" | "input" | "icon" | "image" | "frame" | "container" | "checkbox" | "link";
   name: string;
   properties: ElementProperties;
   responsive?: ResponsiveProps;
+  elements?: ElementSpec[];
 }
 
 /**
@@ -60,20 +61,31 @@ export interface ElementProperties {
   height?: number;
   opacity?: number;
   cornerRadius?: number;
-  fills?: Paint[];
-  strokes?: Paint[];
+  fills?: Array<{
+    type: "SOLID";
+    color: string; // Hex color
+  }>;
+  strokes?: Array<{
+    type: "SOLID";
+    color: string; // Hex color
+  }>;
   effects?: EffectSpec[];
-  
+
+  // Layout properties
+  layoutMode?: "VERTICAL" | "HORIZONTAL" | "NONE";
+  primaryAxisSizingMode?: "FIXED" | "AUTO";
+  counterAxisSizingMode?: "FIXED" | "AUTO";
+
   // Text-specific properties
   text?: string;
   characters?: string;
   fontSize?: number;
   fontName?: FontName;
-  textColor?: string;
+  textColor?: string | RGB;
   textAlignHorizontal?: "LEFT" | "CENTER" | "RIGHT";
   textAlignVertical?: "TOP" | "CENTER" | "BOTTOM";
   fontWeight?: "regular" | "medium" | "bold";
-  
+
   // Layout properties
   layoutAlign?: "STRETCH" | "INHERIT";
   itemSpacing?: number;
@@ -81,12 +93,13 @@ export interface ElementProperties {
   paddingRight?: number;
   paddingTop?: number;
   paddingBottom?: number;
-  
+
   // Input properties
   placeholder?: string;
-  
+
   // Icon/Image properties
   size?: number;
+  iconName?: string;
 }
 
 /**
@@ -100,6 +113,6 @@ export interface UIConfig {
 /**
  * Message types
  */
-export type MessageType = 
-  | { type: 'generate-component', apiKey: string, prompt: string }
-  | { type: 'close' };
+export type MessageType =
+  | { type: "generate-component"; apiKey: string; prompt: string }
+  | { type: "close" };
