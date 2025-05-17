@@ -41,7 +41,7 @@ An intelligent Figma plugin that generates professional UI components from natur
 
 ```powershell
 # Clone the repository
-git clone https://github.com/yourusername/figma-component-ai.git
+git clone https://github.com/knightabir/ai-figma-designer.git
 
 # Navigate to the project directory
 cd figma-component-ai
